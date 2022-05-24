@@ -1,11 +1,14 @@
 import { Layout, Row, Col } from "antd";
 import { Content, Footer, Header } from "antd/lib/layout/layout";
+import Gallery from "../containers/Gallery";
+import Detail from "../containers/Detail";
 import Minter from "../containers/Minter";
 import WrongNetwork from "../containers/WrongNetwork";
 import logo from "../images/sol.png";
 import { Route, Routes } from "react-router-dom";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import AppMenu from "../menu/AppMenu";
 
 const AppLayout = () => {
   const { connection } = useConnection();
@@ -22,10 +25,13 @@ const AppLayout = () => {
               </Col>
               <Col>
                 <h1>
-                  <font color="white">Solana NFT Minter</font>
+                  <font color="white">Zoo NFT Market Solana</font>
                 </h1>
               </Col>
               <Col flex="auto"></Col>
+              <Col>
+                <AppMenu />
+              </Col>
               <Col style={{ marginRight: 10 }}>
                 <WalletMultiButton className="wallet-button" />
               </Col>
@@ -34,7 +40,9 @@ const AppLayout = () => {
           <Content>
             {connected && publicKey != null && (
               <Routes>
-                <Route path="/" element={<Minter />} />
+                <Route path="/" element={<Gallery />} />
+                <Route path="/gallery" element={<Gallery />} />
+                <Route path="/detail/:id" element={<Detail />} />
                 <Route path="/mint" element={<Minter />} />
               </Routes>
             )}

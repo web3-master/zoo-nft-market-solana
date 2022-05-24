@@ -25,9 +25,6 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
 
-import { binary_to_base58, base58_to_binary } from "base58-js";
-import { decodeMetadata } from "../util/metaplex_util";
-
 import {
   TOKEN_PROGRAM_ID,
   createAssociatedTokenAccountInstruction,
@@ -38,15 +35,11 @@ import {
 
 import ZooNftMarketIdl from "../idl/zoo_nft_market.json";
 
-const TOKEN_METADATA_PROGRAM_ID = new anchor.web3.PublicKey(
-  "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
-);
-
-const SOL_MINT_NFT_PROGRAM_ID = new anchor.web3.PublicKey(
-  "9FKLho9AUYScrrKgJbG1mExt5nSgEfk1CNEbR8qBwKTZ"
-);
-
-const NFT_SYMBOL = "ani-nft";
+import {
+  TOKEN_METADATA_PROGRAM_ID,
+  ZOO_NFT_MARKET_PROGRAM_ID,
+  NFT_SYMBOL,
+} from "../data/Constants";
 
 const ipfs = ipfsClient.create({
   host: "ipfs.infura.io",
@@ -66,10 +59,6 @@ const Minter = () => {
   const [uploading, setUploading] = useState(false);
   const [minting, setMinting] = useState(false);
   const [mintSuccess, setMintSuccess] = useState(false);
-
-  useEffect(() => {
-    fetchAllNfts();
-  }, [connection, wallet]);
 
   const onFileSelected = (file) => {
     const reader = new window.FileReader();
@@ -181,7 +170,7 @@ const Minter = () => {
 
     const program = new Program(
       ZooNftMarketIdl,
-      SOL_MINT_NFT_PROGRAM_ID,
+      ZOO_NFT_MARKET_PROGRAM_ID,
       provider
     );
     console.log("Program Id: ", program.programId.toBase58());
@@ -286,84 +275,6 @@ const Minter = () => {
   const onMintAgain = () => {
     setMintSuccess(false);
     form.resetFields();
-  };
-
-  const fetchAllNfts = async () => {
-    const MAX_NAME_LENGTH = 32;
-    const MAX_URI_LENGTH = 200;
-    const MAX_SYMBOL_LENGTH = 10;
-    const MAX_CREATOR_LEN = 32 + 1 + 1;
-    const MAX_CREATOR_LIMIT = 5;
-    const MAX_DATA_SIZE =
-      4 +
-      MAX_NAME_LENGTH +
-      4 +
-      MAX_SYMBOL_LENGTH +
-      4 +
-      MAX_URI_LENGTH +
-      2 +
-      1 +
-      4 +
-      MAX_CREATOR_LIMIT * MAX_CREATOR_LEN;
-    const MAX_METADATA_LEN = 1 + 32 + 32 + MAX_DATA_SIZE + 1 + 1 + 9 + 172;
-    const SYMBOL_START = 1 + 32 + 32 + 4 + MAX_NAME_LENGTH + 4;
-    const CREATOR_ARRAY_START =
-      1 +
-      32 +
-      32 +
-      4 +
-      MAX_NAME_LENGTH +
-      4 +
-      MAX_URI_LENGTH +
-      4 +
-      MAX_SYMBOL_LENGTH +
-      2 +
-      1 +
-      4 +
-      MAX_CREATOR_LEN;
-
-    const nftSymbolBytes = new TextEncoder().encode(NFT_SYMBOL);
-    const nftSymbolBase58 = binary_to_base58(nftSymbolBytes);
-    console.log("nftSymbol Base58", nftSymbolBase58);
-
-    const metadataAccounts = await connection.getProgramAccounts(
-      TOKEN_METADATA_PROGRAM_ID,
-      {
-        // The mint address is located at byte 33 and lasts for 32 bytes.
-        // dataSlice: {
-        //   offset: 33,
-        //   length:
-        //     32 +
-        //     4 +
-        //     MAX_NAME_LENGTH +
-        //     4 +
-        //     MAX_URI_LENGTH +
-        //     4 +
-        //     MAX_SYMBOL_LENGTH,
-        // },
-
-        filters: [
-          // Only get Metadata accounts.
-          { dataSize: MAX_METADATA_LEN },
-
-          // Filter using the first creator.
-          {
-            memcmp: {
-              offset: SYMBOL_START,
-              bytes: nftSymbolBase58,
-            },
-          },
-        ],
-      }
-    );
-
-    const decodedMetadatas = metadataAccounts.map(
-      (metadataAccountInfo) =>
-        decodeMetadata(new Buffer(metadataAccountInfo.account.data))
-      // binary_to_base58(metadataAccountInfo.account.data)
-    );
-
-    console.log("Decoded Metatdata Accounts", decodedMetadatas);
   };
 
   if (mintSuccess) {
