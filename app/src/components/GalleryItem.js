@@ -1,9 +1,6 @@
 import { Badge, Card, Image, List, Skeleton } from "antd";
 import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-// import CollectionContext from "../web3/store/collection-context";
-// import MarketplaceContext from "../web3/store/marketplace-context";
-// import Web3Context from "../web3/store/web3-context";
 import "./GalleryItem.css";
 
 const GalleryItem = ({ metadata }) => {
@@ -20,7 +17,7 @@ const GalleryItem = ({ metadata }) => {
   }, [metadata]);
 
   const onClick = () => {
-    navigate("/detail/" + metadata.mint);
+    navigate("/detail/" + metadata.mint.toString("hex"));
   };
 
   const renderItemBody = () => {
@@ -28,7 +25,7 @@ const GalleryItem = ({ metadata }) => {
       <Card
         hoverable
         cover={
-          <div style={{ height: "240px", overflow: "hidden" }}>
+          <div style={{ height: "200px", overflow: "hidden" }}>
             {uriData == null ? (
               <Skeleton active />
             ) : (
@@ -43,18 +40,7 @@ const GalleryItem = ({ metadata }) => {
     );
   };
 
-  return (
-    <List.Item onClick={onClick}>
-      {renderItemBody()}
-      {/* {offer == null ? (
-        renderItemBody()
-      ) : (
-        <Badge.Ribbon text="In Sale" color="green">
-          {renderItemBody()}
-        </Badge.Ribbon>
-      )} */}
-    </List.Item>
-  );
+  return <List.Item onClick={onClick}>{renderItemBody()}</List.Item>;
 };
 
 export default GalleryItem;

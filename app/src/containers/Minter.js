@@ -40,6 +40,7 @@ import {
   ZOO_NFT_MARKET_PROGRAM_ID,
   NFT_SYMBOL,
 } from "../data/Constants";
+import CollectionContext from "../contexts/collection-context";
 
 const ipfs = ipfsClient.create({
   host: "ipfs.infura.io",
@@ -51,6 +52,7 @@ const Minter = () => {
   let navigate = useNavigate();
   const { connection } = useConnection();
   const wallet = useWallet();
+  const collectionCtx = useContext(CollectionContext);
 
   const [form] = useForm();
   const [imageFileBuffer, setImageFileBuffer] = useState(null);
@@ -266,6 +268,8 @@ const Minter = () => {
       const signature = await wallet.sendTransaction(tx, connection);
       await connection.confirmTransaction(signature, "confirmed");
       console.log("Mint Success!");
+
+      collectionCtx.loadItemMetadata(connection, metadataAddress);
       return true;
     } catch {
       return false;
@@ -285,6 +289,13 @@ const Minter = () => {
         title="Successfully minted new NFT!"
         subTitle="You can check this new NFT in your wallet."
         extra={[
+          <Button
+            type="primary"
+            key="console"
+            onClick={() => navigate("/gallery")}
+          >
+            Go to Gallery
+          </Button>,
           <Button key="buy" onClick={onMintAgain}>
             Mint Again
           </Button>,

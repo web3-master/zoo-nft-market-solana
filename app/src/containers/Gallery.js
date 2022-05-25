@@ -7,98 +7,39 @@ import {
   Collapse,
   Form,
   Input,
-  InputNumber,
   List,
-  message,
-  Radio,
   Row,
   Skeleton,
-  Space,
 } from "antd";
 import CollapsePanel from "antd/lib/collapse/CollapsePanel";
 import { useForm } from "antd/lib/form/Form";
 import { useContext, useEffect, useState } from "react";
 import GalleryItem from "../components/GalleryItem";
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-
-import { binary_to_base58, base58_to_binary } from "base58-js";
-import { decodeMetadata } from "../util/metaplex_util";
-import { TOKEN_METADATA_PROGRAM_ID, NFT_SYMBOL } from "../data/Constants";
+import CollectionContext from "../contexts/collection-context";
 
 const Gallery = () => {
   const [items, setItems] = useState([]);
   const [keyword, setKeyword] = useState("");
   const [keywordForm] = useForm();
 
-  const { connection } = useConnection();
-  const wallet = useWallet();
+  const collectionCtx = useContext(CollectionContext);
 
   useEffect(() => {
-    fetchAllNfts();
-  }, [connection, wallet]);
+    setItems(collectionCtx.collection);
+  }, [collectionCtx]);
 
-  //   useEffect(() => {
-  //     var result = [];
-  //     if (keyword == "") {
-  //       result = collectionCtx.collection;
-  //     } else {
-  //       result = collectionCtx.collection.filter(
-  //         (nft) =>
-  //           nft.title.includes(keyword) || nft.description.includes(keyword)
-  //       );
-  //     }
+  useEffect(() => {
+    var result = [];
+    if (keyword == "") {
+      result = collectionCtx.collection;
+    } else {
+      result = collectionCtx.collection.filter((nft) =>
+        nft.data.name.includes(keyword)
+      );
+    }
 
-  //     setItems(result);
-  //   }, [keyword]);
-
-  const fetchAllNfts = async () => {
-    const MAX_NAME_LENGTH = 32;
-    const MAX_URI_LENGTH = 200;
-    const MAX_SYMBOL_LENGTH = 10;
-    const MAX_CREATOR_LEN = 32 + 1 + 1;
-    const MAX_CREATOR_LIMIT = 5;
-    const MAX_DATA_SIZE =
-      4 +
-      MAX_NAME_LENGTH +
-      4 +
-      MAX_SYMBOL_LENGTH +
-      4 +
-      MAX_URI_LENGTH +
-      2 +
-      1 +
-      4 +
-      MAX_CREATOR_LIMIT * MAX_CREATOR_LEN;
-    const MAX_METADATA_LEN = 1 + 32 + 32 + MAX_DATA_SIZE + 1 + 1 + 9 + 172;
-    const SYMBOL_START = 1 + 32 + 32 + 4 + MAX_NAME_LENGTH + 4;
-
-    const nftSymbolBytes = new TextEncoder().encode(NFT_SYMBOL);
-    const nftSymbolBase58 = binary_to_base58(nftSymbolBytes);
-
-    const metadataAccounts = await connection.getProgramAccounts(
-      TOKEN_METADATA_PROGRAM_ID,
-      {
-        filters: [
-          // Only get Metadata accounts.
-          { dataSize: MAX_METADATA_LEN },
-
-          // Filter using the first creator.
-          {
-            memcmp: {
-              offset: SYMBOL_START,
-              bytes: nftSymbolBase58,
-            },
-          },
-        ],
-      }
-    );
-
-    const decodedMetadatas = metadataAccounts.map((metadataAccountInfo) =>
-      decodeMetadata(new Buffer(metadataAccountInfo.account.data))
-    );
-
-    console.log("Decoded Metatdata Accounts", decodedMetadatas);
-    setItems(decodedMetadatas);
-  };
+    setItems(result);
+  }, [keyword]);
 
   const renderItem = (metadata, key) => {
     if (Object.keys(metadata).length == 0) {
@@ -159,16 +100,12 @@ const Gallery = () => {
 
   return (
     <Row style={{ margin: 60 }}>
-      {/* {collectionCtx.nftIsLoading && (
-    <Col span={24}>
-      <Alert message="Loading items..." type="info" showIcon />
-    </Col>
-  )}
-  {!collectionCtx.nftIsLoading && marketplaceCtx.mktIsLoading && (
-    <Col span={24}>
-      <Alert message="Processing request..." type="info" showIcon />
-    </Col>
-  )} */}
+      {collectionCtx.nftIsLoading && (
+        <Col span={24}>
+          <Alert message="Loading items..." type="info" showIcon />
+        </Col>
+      )}
+
       <Col span={24}>
         <Row gutter={20} style={{ marginTop: 10 }}>
           {renderFilterBar()}
@@ -181,27 +118,7 @@ const Gallery = () => {
                 </span>
               }
             >
-              <List
-                grid={{
-                  gutter: 32,
-                  xs: 1,
-                  sm: 2,
-                  md: 2,
-                  lg: 4,
-                  xl: 4,
-                  xxl: 4,
-                }}
-                locale={{ emptyText: "There's nothing to show!" }}
-                dataSource={items}
-                renderItem={renderItem}
-                pagination={{
-                  position: "bottom",
-                  pageSize: 8,
-                  total: items.length,
-                  showTotal: (total) => `Total ${total} items`,
-                }}
-              />
-              {/* {collectionCtx.nftIsLoading ? (
+              {collectionCtx.nftIsLoading ? (
                 <Skeleton />
               ) : (
                 <List
@@ -224,7 +141,7 @@ const Gallery = () => {
                     showTotal: (total) => `Total ${total} items`,
                   }}
                 />
-              )} */}
+              )}
             </Card>
           </Col>
         </Row>
