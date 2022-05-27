@@ -11,9 +11,9 @@ function App() {
   const wallet = useWallet();
   const collectionCtx = useContext(CollectionContext);
 
-  useEffect(() => {
-    collectionCtx.loadCollection(connection);
-  }, [connection, wallet]);
+  // useEffect(() => {
+  //   collectionCtx.loadCollection(connection, 0, 10);
+  // }, [connection, wallet]);
 
   return (
     <BrowserRouter>

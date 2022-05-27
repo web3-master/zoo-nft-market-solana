@@ -6,6 +6,7 @@ import { decodeMetadata } from "../util/metaplex_util";
 import { TOKEN_METADATA_PROGRAM_ID, NFT_SYMBOL } from "../data/Constants";
 
 const defaultCollectionState = {
+  collectionPublicKeys: [],
   collection: [],
   nftIsLoading: true,
 };
@@ -13,13 +14,24 @@ const defaultCollectionState = {
 const collectionReducer = (state, action) => {
   if (action.type === "LOADCOLLECTION") {
     return {
-      collection: action.collection,
+      collectionPublicKeys:
+        action.collectionPublicKeys == null
+          ? state.collectionPublicKeys
+          : action.collectionPublicKeys,
+      collection:
+        action.pageIndex == 0
+          ? action.collection
+          : [...state.collection, ...action.collection],
       nftIsLoading: false,
     };
   }
 
   if (action.type === "ADD") {
     return {
+      collectionPublicKeys: [
+        action.itemPublicKey,
+        ...state.collectionPublicKeys,
+      ],
       collection: [action.item, ...state.collection],
       nftIsLoading: false,
     };
@@ -27,6 +39,7 @@ const collectionReducer = (state, action) => {
 
   if (action.type === "LOADING") {
     return {
+      collectionPublicKeys: state.collectionPublicKeys,
       collection: state.collection,
       nftIsLoading: action.loading,
     };
@@ -41,7 +54,7 @@ const CollectionProvider = (props) => {
     defaultCollectionState
   );
 
-  const loadCollectionHandler = async (connection) => {
+  const loadCollectionHandler = async (connection, pageIndex, pageSize) => {
     dispatchCollectionAction({ type: "LOADING", loading: true });
 
     const MAX_NAME_LENGTH = 32;
@@ -66,33 +79,57 @@ const CollectionProvider = (props) => {
     const nftSymbolBytes = new TextEncoder().encode(NFT_SYMBOL);
     const nftSymbolBase58 = binary_to_base58(nftSymbolBytes);
 
-    const metadataAccounts = await connection.getProgramAccounts(
-      TOKEN_METADATA_PROGRAM_ID,
-      {
-        filters: [
-          // Only get Metadata accounts.
-          { dataSize: MAX_METADATA_LEN },
+    var metadataAccountPublicKeys = CollectionState.collectionPublicKeys;
 
-          // Filter using the first creator.
-          {
-            memcmp: {
-              offset: SYMBOL_START,
-              bytes: nftSymbolBase58,
+    //
+    // Load all collection account public keys at first.
+    //
+    if (pageIndex == 0) {
+      const metadataAccounts = await connection.getProgramAccounts(
+        TOKEN_METADATA_PROGRAM_ID,
+        {
+          dataSlice: { offset: 0, length: 0 },
+          filters: [
+            // Only get Metadata accounts.
+            { dataSize: MAX_METADATA_LEN },
+
+            // Filter using the first creator.
+            {
+              memcmp: {
+                offset: SYMBOL_START,
+                bytes: nftSymbolBase58,
+              },
             },
-          },
-        ],
-      }
+          ],
+        }
+      );
+
+      metadataAccountPublicKeys = metadataAccounts.map(
+        (account) => account.pubkey
+      );
+    }
+
+    const paginatedPublicKeys = metadataAccountPublicKeys.slice(
+      pageIndex * pageSize,
+      (pageIndex + 1) * pageSize
     );
 
-    const decodedMetadatas = metadataAccounts.map((metadataAccountInfo) =>
-      decodeMetadata(new Buffer(metadataAccountInfo.account.data))
-    );
+    var loadedMetadata = [];
+    if (paginatedPublicKeys.length > 0) {
+      const loadedMetadataAccounts = await connection.getMultipleAccountsInfo(
+        paginatedPublicKeys
+      );
 
-    console.log("Decoded Metatdata Accounts", decodedMetadatas);
+      loadedMetadata = loadedMetadataAccounts.map((metadataAccountInfo) =>
+        decodeMetadata(new Buffer(metadataAccountInfo.data))
+      );
+    }
 
     dispatchCollectionAction({
       type: "LOADCOLLECTION",
-      collection: decodedMetadatas,
+      pageIndex: pageIndex,
+      collection: loadedMetadata,
+      collectionPublicKeys: pageIndex == 0 ? metadataAccountPublicKeys : null,
     });
   };
 
@@ -108,6 +145,7 @@ const CollectionProvider = (props) => {
     dispatchCollectionAction({
       type: "ADD",
       item: decodedMetadata,
+      itemPublicKey: metadataAddress,
     });
   };
 
@@ -117,6 +155,7 @@ const CollectionProvider = (props) => {
 
   const collectionContext = {
     collection: CollectionState.collection,
+    collectionPublicKeys: CollectionState.collectionPublicKeys,
     nftIsLoading: CollectionState.nftIsLoading,
     loadCollection: loadCollectionHandler,
     loadItemMetadata: loadItemMetadataHandler,

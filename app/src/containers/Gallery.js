@@ -1,10 +1,12 @@
 import { ControlOutlined, TableOutlined } from "@ant-design/icons";
+import { useConnection } from "@solana/wallet-adapter-react";
 import {
   Alert,
   Button,
   Card,
   Col,
   Collapse,
+  Divider,
   Form,
   Input,
   List,
@@ -14,15 +16,22 @@ import {
 import CollapsePanel from "antd/lib/collapse/CollapsePanel";
 import { useForm } from "antd/lib/form/Form";
 import { useContext, useEffect, useState } from "react";
+import InfiniteScroll from "react-infinite-scroll-component";
 import GalleryItem from "../components/GalleryItem";
 import CollectionContext from "../contexts/collection-context";
 
 const Gallery = () => {
+  const [loading, setLoading] = useState(false);
   const [items, setItems] = useState([]);
   const [keyword, setKeyword] = useState("");
   const [keywordForm] = useForm();
 
+  const { connection } = useConnection();
   const collectionCtx = useContext(CollectionContext);
+
+  useEffect(() => {
+    loadMoreData();
+  }, []);
 
   useEffect(() => {
     setItems(collectionCtx.collection);
@@ -40,6 +49,40 @@ const Gallery = () => {
 
     setItems(result);
   }, [keyword]);
+
+  const loadMoreData = async () => {
+    if (loading) {
+      return;
+    }
+
+    setLoading(true);
+    await collectionCtx.loadCollection(
+      connection,
+      parseInt(collectionCtx.collection.length / 10),
+      10
+    );
+    setLoading(false);
+  };
+
+  const hasMore = () => {
+    if (
+      collectionCtx.collection === undefined ||
+      collectionCtx.collectionPublicKeys === undefined ||
+      collectionCtx.collectionPublicKeys.length === 0
+    ) {
+      return true;
+    } else {
+      console.log(
+        "hasMore2",
+        collectionCtx.collection.length <
+          collectionCtx.collectionPublicKeys.length
+      );
+      return (
+        collectionCtx.collection.length <
+        collectionCtx.collectionPublicKeys.length
+      );
+    }
+  };
 
   const renderItem = (metadata, key) => {
     if (Object.keys(metadata).length == 0) {
@@ -100,16 +143,10 @@ const Gallery = () => {
 
   return (
     <Row style={{ margin: 60 }}>
-      {collectionCtx.nftIsLoading && (
-        <Col span={24}>
-          <Alert message="Loading items..." type="info" showIcon />
-        </Col>
-      )}
-
       <Col span={24}>
         <Row gutter={20} style={{ marginTop: 10 }}>
-          {renderFilterBar()}
-          <Col span={20}>
+          {/* {renderFilterBar()} */}
+          <Col span={20} offset={2}>
             <Card
               title={
                 <span>
@@ -118,30 +155,46 @@ const Gallery = () => {
                 </span>
               }
             >
-              {collectionCtx.nftIsLoading ? (
-                <Skeleton />
-              ) : (
-                <List
-                  grid={{
-                    gutter: 32,
-                    xs: 1,
-                    sm: 2,
-                    md: 2,
-                    lg: 4,
-                    xl: 4,
-                    xxl: 4,
-                  }}
-                  locale={{ emptyText: "There's nothing to show!" }}
-                  dataSource={items}
-                  renderItem={renderItem}
-                  pagination={{
-                    position: "bottom",
-                    pageSize: 8,
-                    total: items.length,
-                    showTotal: (total) => `Total ${total} items`,
-                  }}
-                />
-              )}
+              <div
+                id="scrollableDiv"
+                style={{
+                  height: 600,
+                  overflow: "auto",
+                  padding: "0 0px",
+                }}
+              >
+                <InfiniteScroll
+                  dataLength={collectionCtx.collection.length}
+                  next={loadMoreData}
+                  hasMore={hasMore()}
+                  loader={
+                    <Skeleton
+                      paragraph={{
+                        rows: 2,
+                      }}
+                      active
+                    />
+                  }
+                  endMessage={
+                    <Divider plain>It is all, nothing more 🤐</Divider>
+                  }
+                  scrollableTarget="scrollableDiv"
+                >
+                  <List
+                    grid={{
+                      gutter: 32,
+                      xs: 1,
+                      sm: 2,
+                      md: 2,
+                      lg: 4,
+                      xl: 4,
+                      xxl: 4,
+                    }}
+                    dataSource={collectionCtx.collection}
+                    renderItem={renderItem}
+                  />
+                </InfiniteScroll>
+              </div>
             </Card>
           </Col>
         </Row>

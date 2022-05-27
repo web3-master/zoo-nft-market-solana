@@ -1,8 +1,9 @@
 import React from "react";
 
 const CollectionContext = React.createContext({
+  collectionPublicKeys: [],
   collection: [],
-  nftIsLoading: true,
+  nftIsLoading: false,
   loadCollection: () => {},
   loadItemMetadata: () => {},
   setNftIsLoading: () => {},
