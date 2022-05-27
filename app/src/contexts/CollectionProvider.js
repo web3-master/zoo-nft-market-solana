@@ -120,8 +120,12 @@ const CollectionProvider = (props) => {
         paginatedPublicKeys
       );
 
-      loadedMetadata = loadedMetadataAccounts.map((metadataAccountInfo) =>
-        decodeMetadata(new Buffer(metadataAccountInfo.data))
+      loadedMetadata = loadedMetadataAccounts.map(
+        (metadataAccountInfo, index) => {
+          var metaData = decodeMetadata(new Buffer(metadataAccountInfo.data));
+          metaData.address = paginatedPublicKeys[index];
+          return metaData;
+        }
       );
     }
 
@@ -133,20 +137,29 @@ const CollectionProvider = (props) => {
     });
   };
 
-  const loadItemMetadataHandler = async (connection, metadataAddress) => {
+  const loadItemMetadataHandler = async (
+    connection,
+    metadataAddress,
+    isAddToCollection
+  ) => {
     dispatchCollectionAction({ type: "LOADING", loading: true });
 
     const metadataAccountInfo = await connection.getAccountInfo(
       metadataAddress
     );
 
-    const decodedMetadata = decodeMetadata(metadataAccountInfo.data);
+    var decodedMetadata = decodeMetadata(metadataAccountInfo.data);
+    decodedMetadata.address = metadataAddress;
 
-    dispatchCollectionAction({
-      type: "ADD",
-      item: decodedMetadata,
-      itemPublicKey: metadataAddress,
-    });
+    if (isAddToCollection) {
+      dispatchCollectionAction({
+        type: "ADD",
+        item: decodedMetadata,
+        itemPublicKey: metadataAddress,
+      });
+    }
+
+    return decodedMetadata;
   };
 
   const setNftIsLoadingHandler = (loading) => {

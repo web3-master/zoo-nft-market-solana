@@ -269,7 +269,7 @@ const Minter = () => {
       await connection.confirmTransaction(signature, "confirmed");
       console.log("Mint Success!");
 
-      collectionCtx.loadItemMetadata(connection, metadataAddress);
+      collectionCtx.loadItemMetadata(connection, metadataAddress, true);
       return true;
     } catch {
       return false;

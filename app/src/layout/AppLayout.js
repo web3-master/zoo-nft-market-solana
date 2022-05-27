@@ -29,7 +29,7 @@ const AppLayout = () => {
                 </h1>
               </Col>
               <Col flex="auto"></Col>
-              <Col>
+              <Col span={4}>
                 <AppMenu />
               </Col>
               <Col style={{ marginRight: 10 }}>
@@ -42,7 +42,7 @@ const AppLayout = () => {
               <Routes>
                 <Route path="/" element={<Gallery />} />
                 <Route path="/gallery" element={<Gallery />} />
-                <Route path="/detail/:id" element={<Detail />} />
+                <Route path="/detail/:metadataAddress" element={<Detail />} />
                 <Route path="/mint" element={<Minter />} />
               </Routes>
             )}
