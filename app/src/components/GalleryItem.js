@@ -1,5 +1,5 @@
-import { Badge, Card, Image, List, Skeleton } from "antd";
-import { useContext, useEffect, useState } from "react";
+import { Card, Image, List, Skeleton } from "antd";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./GalleryItem.css";
 
@@ -17,7 +17,7 @@ const GalleryItem = ({ metadata }) => {
   }, [metadata]);
 
   const onClick = () => {
-    navigate("/detail/" + metadata.mint.toString("hex"));
+    navigate("/detail/" + metadata.address);
   };
 
   const renderItemBody = () => {
