@@ -8,6 +8,7 @@ Simple but full fledged NFT market place built with Anchor framework for solana 
 
 https://zoo-nft-market-solana.surge.sh
 
+
 ## 📜 Program
 
 ### ⚔️ Used technologies
@@ -20,8 +21,6 @@ https://zoo-nft-market-solana.surge.sh
 
 > [<b>Solana cli</b>](https://docs.solana.com/cli): Command line tool to interact solana cluster.
 
-<br/>
-
 ### 📝 Description
 
 [Program Address in Devnet](https://explorer.solana.com/address/nXWqyd8v3SxxqiHJCYQ2xKamkrGaDkBJqnwUU4DcDDs?cluster=devnet)
@@ -32,22 +31,7 @@ Program implemented 2 main features.
 
 2. NFT marketplace.
 
-## Build & Test
 
-All working and failing cases are covered by unit test scripts.<br/>
-By ts-mocha, chai node.js library.
-
-### Build
-
-```
-$ anchor build
-```
-
-### Test
-
-```
-$ anchor test
-```
 
 ## 📺 DApp
 
@@ -60,7 +44,6 @@ $ anchor test
 > React.js: For our front end building.
 
 > ipfs: Decentralized storage service. We stores all images and metadata here.
-
 ### 📝 Description
 
 This is react.js based decentralized front-end application for our animal owners and buyers.
