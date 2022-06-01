@@ -11,6 +11,7 @@ pub fn create_order(ctx: Context<CreateOrder>, memo: String, price: u64) -> Resu
     order.mint_key = ctx.accounts.mint_key.key();
     order.memo = memo;
     order.price = price;
+    order.bump = *ctx.bumps.get("order").unwrap();
 
     //
     // transfer nft from creator's token account into order's token account.

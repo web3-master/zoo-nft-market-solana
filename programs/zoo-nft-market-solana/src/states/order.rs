@@ -6,12 +6,13 @@ pub struct Order {
     pub mint_key: Pubkey,
     pub memo: String,
     pub price: u64,
+    pub bump: u8,
 }
 
 impl Order {
     pub fn space(memo: &str) -> usize {
         8 + 32 + 32 +
         4 + memo.len() + // memo string
-        8
+        8 + 1
     }
 }

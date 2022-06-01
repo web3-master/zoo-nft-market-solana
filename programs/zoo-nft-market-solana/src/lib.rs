@@ -5,6 +5,7 @@ mod error;
 use anchor_lang::prelude::*;
 use instructions::mint::mint::*;
 use instructions::market::create_order::*;
+use instructions::market::cancel_order::*;
 
 declare_id!("nXWqyd8v3SxxqiHJCYQ2xKamkrGaDkBJqnwUU4DcDDs");
 
@@ -28,5 +29,11 @@ pub mod zoo_nft_market_solana {
         price: u64
     ) -> Result<()> {
         instructions::market::create_order::create_order(ctx, memo, price)
+    }
+
+    pub fn cancel_order(
+        ctx: Context<CancelOrder>
+    ) -> Result<()> {
+        instructions::market::cancel_order::cancel_order(ctx)
     }
 }

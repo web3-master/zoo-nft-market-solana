@@ -9,7 +9,7 @@ import {
   createMintToInstruction,
 } from "@solana/spl-token";
 import { BN } from "bn.js";
-import { expect } from "chai";
+import { assert, expect } from "chai";
 import { ZooNftMarketSolana } from "../target/types/zoo_nft_market_solana";
 
 const { LAMPORTS_PER_SOL } = anchor.web3;
@@ -171,6 +171,45 @@ const createOrder = async (
   };
 };
 
+const cancelOrder = async (
+  user,
+  mintKey: anchor.web3.Keypair,
+  owner: anchor.web3.Keypair,
+  ownerTokenAccount: anchor.web3.PublicKey
+) => {
+  let program = await programForUser(user);
+  const [orderAccount, bump] = await anchor.web3.PublicKey.findProgramAddress(
+    [
+      Buffer.from("order"),
+      owner.publicKey.toBytes(),
+      mintKey.publicKey.toBytes(),
+    ],
+    program.programId
+  );
+
+  const orderTokenAccount = await getAssociatedTokenAddress(
+    mintKey.publicKey,
+    orderAccount,
+    true
+  );
+
+  await program.methods
+    .cancelOrder()
+    .accounts({
+      order: orderAccount,
+      orderTokenAccount: orderTokenAccount,
+      mintKey: mintKey.publicKey,
+      creator: owner.publicKey,
+      creatorTokenAccount: ownerTokenAccount,
+    })
+    .rpc();
+
+  return {
+    orderAccount,
+    orderTokenAccount,
+  };
+};
+
 describe("market logic test", () => {
   it("create order", async () => {
     let user = await createUser(1);
@@ -230,5 +269,94 @@ describe("market logic test", () => {
     expect(order.order.mintKey.toString()).equals(mintKey.publicKey.toString());
     expect(order.order.memo).equals("This is test order.");
     expect(order.order.price.toNumber()).equals(1 * LAMPORTS_PER_SOL);
+  });
+
+  it.only("cancel order", async () => {
+    let user = await createUser(1);
+    console.log("User Account: ", user.key.publicKey.toString());
+
+    //
+    // Create mint.
+    //
+    const mintKey = await createMint(user);
+    console.log("Mint key: ", mintKey.publicKey.toString());
+
+    //
+    // Mint a token.
+    //
+    const tokenAccount = await mintToken(mintKey, user);
+    console.log("Owner Token Account: ", tokenAccount.toString());
+
+    var balance = await mainProgram.provider.connection.getTokenAccountBalance(
+      tokenAccount
+    );
+    expect(balance.value.uiAmount).equals(1);
+
+    //
+    // Create an order.
+    //
+    var order = await createOrder(
+      user,
+      mintKey,
+      user.key,
+      tokenAccount,
+      "This is test order.",
+      1 * LAMPORTS_PER_SOL
+    );
+    console.log("Order Created!!!");
+    console.log("Order Account: ", order.orderAccount.toString());
+    console.log("Order Token Account: ", order.orderTokenAccount.toString());
+    console.log("Order.creator: ", order.order.creator.toString());
+    console.log("Order.mintKey: ", order.order.mintKey.toString());
+    console.log("Order.memo: ", order.order.memo);
+    console.log("Order.price: ", order.order.price.toNumber());
+
+    //
+    // Check result.
+    //
+    balance = await mainProgram.provider.connection.getTokenAccountBalance(
+      tokenAccount
+    );
+    expect(balance.value.uiAmount).equals(0);
+
+    balance = await mainProgram.provider.connection.getTokenAccountBalance(
+      order.orderTokenAccount
+    );
+    expect(balance.value.uiAmount).equals(1);
+
+    expect(order.order.creator.toString()).equals(
+      user.key.publicKey.toString()
+    );
+    expect(order.order.mintKey.toString()).equals(mintKey.publicKey.toString());
+    expect(order.order.memo).equals("This is test order.");
+    expect(order.order.price.toNumber()).equals(1 * LAMPORTS_PER_SOL);
+
+    //
+    // Cancel order.
+    //
+    order = await cancelOrder(user, mintKey, user.key, tokenAccount);
+    console.log("Order Canceled!!!");
+
+    //
+    // Check result.
+    //
+    balance = await mainProgram.provider.connection.getTokenAccountBalance(
+      tokenAccount
+    );
+    expect(balance.value.uiAmount).equals(1);
+
+    let orderAccountInfo = await mainProgram.provider.connection.getAccountInfo(
+      order.orderAccount
+    );
+    expect(orderAccountInfo).equals(null);
+
+    try {
+      balance = await mainProgram.provider.connection.getTokenAccountBalance(
+        order.orderTokenAccount
+      );
+      assert(false, "Order token account should be closed by cancel program.");
+    } catch (e) {
+      expect(e.toString()).contain("could not find account");
+    }
   });
 });

@@ -13,4 +13,10 @@ pub enum MintError {
 pub enum MarketError {
     #[msg("Token transfer from creator account into order account failed!")]
     TokenTransferFailed,
+
+    #[msg("Token transfer from order account to creator account failed!")]
+    TokenTransferFailed2,
+
+    #[msg("Order token close failed!")]
+    TokenCloseFailed,
 }
