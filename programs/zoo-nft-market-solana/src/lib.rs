@@ -6,6 +6,7 @@ use anchor_lang::prelude::*;
 use instructions::mint::mint::*;
 use instructions::market::create_order::*;
 use instructions::market::cancel_order::*;
+use instructions::market::fill_order::*;
 
 declare_id!("nXWqyd8v3SxxqiHJCYQ2xKamkrGaDkBJqnwUU4DcDDs");
 
@@ -35,5 +36,9 @@ pub mod zoo_nft_market_solana {
         ctx: Context<CancelOrder>
     ) -> Result<()> {
         instructions::market::cancel_order::cancel_order(ctx)
+    }
+
+    pub fn fill_order(ctx: Context<FillOrder>) -> Result<()> {
+        instructions::market::fill_order::fill_order(ctx)
     }
 }
