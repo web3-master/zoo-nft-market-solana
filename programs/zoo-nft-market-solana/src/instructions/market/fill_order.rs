@@ -38,7 +38,6 @@ pub fn fill_order(ctx: Context<FillOrder>) -> Result<()> {
     //
     let seeds = &[
         b"order",
-        ctx.accounts.creator.key.as_ref(),
         ctx.accounts.mint_key.key.as_ref(),
         &[order.bump]
     ];
@@ -79,7 +78,6 @@ pub struct FillOrder<'info> {
         mut,
         seeds = [
             b"order",
-            creator.key.as_ref(),
             mint_key.key.as_ref(),
         ],
         bump,

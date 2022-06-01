@@ -33,7 +33,7 @@ import {
   MINT_SIZE,
 } from "@solana/spl-token";
 
-import ZooNftMarketIdl from "../idl/zoo_nft_market.json";
+import ZooNftMarketIdl from "../idl/zoo_nft_market_solana.json";
 
 import {
   TOKEN_METADATA_PROGRAM_ID,

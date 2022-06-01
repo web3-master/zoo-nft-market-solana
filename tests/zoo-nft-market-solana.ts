@@ -167,11 +167,7 @@ const createOrder = async (
 ) => {
   let program = await programForUser(user);
   const [orderAccount, bump] = await anchor.web3.PublicKey.findProgramAddress(
-    [
-      Buffer.from("order"),
-      owner.publicKey.toBytes(),
-      mintKey.publicKey.toBytes(),
-    ],
+    [Buffer.from("order"), mintKey.publicKey.toBytes()],
     program.programId
   );
 
@@ -208,11 +204,7 @@ const cancelOrder = async (
 ) => {
   let program = await programForUser(user);
   const [orderAccount, bump] = await anchor.web3.PublicKey.findProgramAddress(
-    [
-      Buffer.from("order"),
-      owner.publicKey.toBytes(),
-      mintKey.publicKey.toBytes(),
-    ],
+    [Buffer.from("order"), mintKey.publicKey.toBytes()],
     program.programId
   );
 
@@ -246,7 +238,7 @@ const fillOrder = async (
 ) => {
   let program = await programForUser(buyer);
   const [orderAccount, bump] = await anchor.web3.PublicKey.findProgramAddress(
-    [Buffer.from("order"), ownerKey.toBytes(), mintKey.toBytes()],
+    [Buffer.from("order"), mintKey.toBytes()],
     program.programId
   );
 

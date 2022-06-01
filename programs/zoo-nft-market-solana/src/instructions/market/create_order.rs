@@ -40,7 +40,6 @@ pub struct CreateOrder<'info> {
         space = Order::space(&memo),
         seeds = [
             b"order",
-            creator.key().as_ref(),
             mint_key.key().as_ref(),
         ],
         bump

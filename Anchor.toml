@@ -1,13 +1,13 @@
 [features]
 seeds = false
-[programs.localnet]
+[programs.devnet]
 zoo_nft_market_solana = "D6oUwPksdxCJLdiJwUUCn6XPGsUXAsXhPdsMfiULPkLa"
 
 [registry]
 url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "/home/ksh/.config/solana/id.json"
 
 [scripts]

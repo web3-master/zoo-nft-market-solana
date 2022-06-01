@@ -5,7 +5,7 @@ export const TOKEN_METADATA_PROGRAM_ID = new anchor.web3.PublicKey(
 );
 
 export const ZOO_NFT_MARKET_PROGRAM_ID = new anchor.web3.PublicKey(
-  "nXWqyd8v3SxxqiHJCYQ2xKamkrGaDkBJqnwUU4DcDDs"
+  "D6oUwPksdxCJLdiJwUUCn6XPGsUXAsXhPdsMfiULPkLa"
 );
 
 export const NFT_SYMBOL = "ani-nft";

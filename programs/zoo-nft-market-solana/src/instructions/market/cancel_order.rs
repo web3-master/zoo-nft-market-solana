@@ -17,7 +17,6 @@ pub fn cancel_order(ctx: Context<CancelOrder>) -> Result<()> {
     };
     let seeds = &[
         b"order",
-        ctx.accounts.creator.key.as_ref(),
         ctx.accounts.mint_key.to_account_info().key.as_ref(),
         &[ctx.accounts.order.bump]
     ];
@@ -52,7 +51,6 @@ pub struct CancelOrder<'info> {
         mut,
         seeds = [
             b"order",
-            creator.key.as_ref(),
             mint_key.key().as_ref()
         ],
         bump,
