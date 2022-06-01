@@ -8,7 +8,7 @@ use instructions::market::create_order::*;
 use instructions::market::cancel_order::*;
 use instructions::market::fill_order::*;
 
-declare_id!("nXWqyd8v3SxxqiHJCYQ2xKamkrGaDkBJqnwUU4DcDDs");
+declare_id!("D6oUwPksdxCJLdiJwUUCn6XPGsUXAsXhPdsMfiULPkLa");
 
 #[program]
 pub mod zoo_nft_market_solana {

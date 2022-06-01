@@ -83,7 +83,8 @@ pub struct FillOrder<'info> {
             mint_key.key.as_ref(),
         ],
         bump,
-        has_one = creator
+        has_one = creator,
+        close = creator
     )]
     pub order: Account<'info, Order>,
 
@@ -98,6 +99,7 @@ pub struct FillOrder<'info> {
     pub mint_key: AccountInfo<'info>,
 
     /// CHECK: This account's address is only used.
+    #[account(mut)]
     pub creator: AccountInfo<'info>,
 
     #[account(mut)]
