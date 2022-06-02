@@ -1,16 +1,8 @@
+import { ShoppingCartOutlined, WalletOutlined } from "@ant-design/icons";
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
-import {
-  TOKEN_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID,
-  createAssociatedTokenAccountInstruction,
-  getAssociatedTokenAddress,
-  createInitializeMintInstruction,
-  MINT_SIZE,
-  createMintToInstruction,
-} from "@solana/spl-token";
+import { getAssociatedTokenAddress } from "@solana/spl-token";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { ShoppingCartOutlined, WalletOutlined } from "@ant-design/icons";
 import {
   Button,
   Card,
@@ -19,30 +11,21 @@ import {
   Descriptions,
   Form,
   InputNumber,
+  notification,
   Result,
   Row,
   Skeleton,
 } from "antd";
+import { useForm } from "antd/lib/form/Form";
 import { useContext, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import AddressItem from "../components/AddressItem";
-import CollectionContext from "../contexts/collection-context";
-
-import ZooNftMarketIdl from "../idl/zoo_nft_market_solana.json";
-
-import {
-  TOKEN_METADATA_PROGRAM_ID,
-  ZOO_NFT_MARKET_PROGRAM_ID,
-  NFT_SYMBOL,
-} from "../data/Constants";
-
-import solImage from "../images/sol.png";
-import { useForm } from "antd/lib/form/Form";
-
-import { BN } from "bn.js";
 import SolPrice from "../components/SolPrice";
-
-const { LAMPORTS_PER_SOL } = anchor.web3;
+import CollectionContext from "../contexts/collection-context";
+import { ZOO_NFT_MARKET_PROGRAM_ID } from "../data/Constants";
+import ZooNftMarketIdl from "../idl/zoo_nft_market_solana.json";
+import solImage from "../images/sol.png";
+import * as Market from "../util/Market";
 
 const Detail = () => {
   let navigate = useNavigate();
@@ -58,6 +41,7 @@ const Detail = () => {
   const [isMyNft, setIsMyNft] = useState(false);
   const [order, setOrder] = useState(null);
   const [mintKey, setMintKey] = useState(null);
+  const [associatedTokenAddress, setAssociatedTokenAddress] = useState(null);
 
   const [createSaleForm] = useForm();
 
@@ -111,7 +95,14 @@ const Detail = () => {
   const getMarketInfo = async (metatdata) => {
     const mintKey = new anchor.web3.PublicKey(metatdata.mint.toArray("le"));
     setMintKey(mintKey);
-    console.log("mint key: ", mintKey.toString());
+    console.log("mintKey", mintKey.toString());
+
+    const associatedTokenAddress = await getAssociatedTokenAddress(
+      mintKey,
+      wallet.publicKey
+    );
+    console.log("associatedTokenAddress", associatedTokenAddress.toString());
+    setAssociatedTokenAddress(associatedTokenAddress);
 
     //
     // Check if this item is in order.
@@ -129,25 +120,19 @@ const Detail = () => {
       // This item is not in order.
       setOrder(null);
 
-      const myTokenAccountAddress = await getAssociatedTokenAddress(
-        mintKey,
-        wallet.publicKey
-      );
-      console.log(
-        "my token account address: ",
-        myTokenAccountAddress.toString()
-      );
-      const myTokenAccountInfo =
-        await program.provider.connection.getAccountInfo(myTokenAccountAddress);
-      console.log("my token account info: ", myTokenAccountInfo);
+      const associatedTokenAccountInfo =
+        await program.provider.connection.getAccountInfo(
+          associatedTokenAddress
+        );
+      console.log("associatedTokenAccountInfo", associatedTokenAccountInfo);
 
-      if (myTokenAccountInfo === null) {
+      if (associatedTokenAccountInfo === null) {
         // This is not my nft.
         setIsMyNft(false);
       } else {
         const balance =
           await program.provider.connection.getTokenAccountBalance(
-            myTokenAccountAddress
+            associatedTokenAddress
           );
 
         if (balance.value.uiAmount === 1) {
@@ -162,9 +147,6 @@ const Detail = () => {
       // This item is in order.
       const order = await program.account.order.fetch(orderAccount);
       setOrder(order);
-      console.log("Order.creator: ", order.creator.toString());
-      console.log("Order.price: ", order.price.toNumber());
-      console.log("My wallet address: ", wallet.publicKey.toString());
     }
   };
 
@@ -197,7 +179,7 @@ const Detail = () => {
   const renderCreateSale = () => {
     return (
       <Card title="Create Sale" style={{ marginBottom: 20 }}>
-        <Form form={createSaleForm} layout="inline" onFinish={createSale}>
+        <Form form={createSaleForm} layout="inline" onFinish={onCreateSale}>
           <Form.Item
             label="Price"
             name="price"
@@ -224,73 +206,27 @@ const Detail = () => {
     );
   };
 
-  const createOrder = async (
-    mintKey,
-    ownerKey,
-    ownerTokenAccount,
-    memo,
-    price
-  ) => {
-    const [orderAccount] = await anchor.web3.PublicKey.findProgramAddress(
-      [Buffer.from("order"), mintKey.toBytes()],
-      program.programId
-    );
-
-    const orderTokenAccount = await getAssociatedTokenAddress(
-      mintKey,
-      orderAccount,
-      true
-    );
-
-    try {
-      const tx = program.transaction.createOrder(
-        memo,
-        new BN(price * LAMPORTS_PER_SOL),
-        {
-          accounts: {
-            order: orderAccount,
-            orderTokenAccount: orderTokenAccount,
-            mintKey: mintKey,
-            creator: ownerKey,
-            creatorTokenAccount: ownerTokenAccount,
-            systemProgram: anchor.web3.SystemProgram.programId,
-            tokenProgram: TOKEN_PROGRAM_ID,
-            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-            rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-          },
-        }
-      );
-
-      const signature = await wallet.sendTransaction(tx, connection);
-      await connection.confirmTransaction(signature, "confirmed");
-      console.log("Create Order Success!");
-
-      let order = await program.account.order.fetch(orderAccount);
-      return {
-        order,
-        orderAccount,
-        orderTokenAccount,
-      };
-    } catch (err) {
-      console.log(err);
-      return null;
-    }
-  };
-
-  const createSale = async (values) => {
+  const onCreateSale = async (values) => {
     let { price } = values;
-    const myTokenAccountAddress = await getAssociatedTokenAddress(
-      mintKey,
-      wallet.publicKey
-    );
-    const order = await createOrder(
+
+    const order = await Market.createOrder(
+      program,
       mintKey,
       wallet.publicKey,
-      myTokenAccountAddress,
+      associatedTokenAddress,
       "An order",
       price
     );
-    console.log("Order Created: ", order);
+
+    if (order != null) {
+      setIsMyNft(false);
+      setOrder(order);
+
+      notification["success"]({
+        message: "Success",
+        description: "Created a sale of this item!",
+      });
+    }
   };
 
   const renderMySale = () => {
@@ -299,7 +235,7 @@ const Detail = () => {
         <SolPrice price={order.price.toNumber()} />
         <Button
           type="primary"
-          onClick={cancelOffer}
+          onClick={onCancelOffer}
           style={{ marginTop: 10, background: "red", borderColor: "red" }}
         >
           Cancel
@@ -308,7 +244,60 @@ const Detail = () => {
     );
   };
 
-  const cancelOffer = () => {};
+  const onCancelOffer = async () => {
+    const success = await Market.cancelOrder(
+      program,
+      mintKey,
+      wallet.publicKey,
+      associatedTokenAddress
+    );
+
+    if (success) {
+      setIsMyNft(true);
+      setOrder(null);
+
+      notification["success"]({
+        message: "Success",
+        description: "Cancelled sale of this item!",
+      });
+    }
+  };
+
+  const renderBuy = () => {
+    return (
+      <Card title="Sale" style={{ marginBottom: 10 }}>
+        <SolPrice price={order.price.toNumber()} />
+        <Button
+          icon={<WalletOutlined />}
+          type="primary"
+          style={{ marginTop: 10 }}
+          onClick={onBuy}
+        >
+          Buy
+        </Button>
+      </Card>
+    );
+  };
+
+  const onBuy = async () => {
+    const success = await Market.fillOrder(
+      program,
+      mintKey,
+      order.creator,
+      wallet
+    );
+
+    if (success) {
+      setIsMyNft(true);
+      setOrder(null);
+
+      notification["success"]({
+        message: "Success",
+        description:
+          "Bought this item!\nYou will see this item in your wallet.",
+      });
+    }
+  };
 
   return (
     <Row style={{ margin: 20 }}>
@@ -333,6 +322,9 @@ const Detail = () => {
                   {order != null &&
                     order.creator.toString() == wallet.publicKey.toString() &&
                     renderMySale()}
+                  {order != null &&
+                    order.creator.toString() != wallet.publicKey.toString() &&
+                    renderBuy()}
 
                   <Collapse
                     defaultActiveKey={["1", "2", "3"]}
