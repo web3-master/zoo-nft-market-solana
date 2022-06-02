@@ -1,57 +1,37 @@
-import {
-  Button,
-  Card,
-  Form,
-  Input,
-  Upload,
-  Row,
-  Col,
-  notification,
-  Alert,
-  Result,
-  Radio,
-  InputNumber,
-  DatePicker,
-} from "antd";
-import { useNavigate } from "react-router-dom";
-import { useForm } from "antd/lib/form/Form";
 import { InboxOutlined } from "@ant-design/icons";
-import { useContext, useEffect, useState } from "react";
-
-import * as ipfsClient from "ipfs-http-client";
-
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
-
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import {
-  TOKEN_PROGRAM_ID,
-  createAssociatedTokenAccountInstruction,
-  getAssociatedTokenAddress,
-  createInitializeMintInstruction,
-  MINT_SIZE,
-} from "@solana/spl-token";
-
-import ZooNftMarketIdl from "../idl/zoo_nft_market_solana.json";
-
-import {
-  TOKEN_METADATA_PROGRAM_ID,
-  ZOO_NFT_MARKET_PROGRAM_ID,
-  NFT_SYMBOL,
-} from "../data/Constants";
+  Alert,
+  Button,
+  Card,
+  Col,
+  DatePicker,
+  Form,
+  Input,
+  InputNumber,
+  notification,
+  Radio,
+  Result,
+  Row,
+  Upload,
+} from "antd";
+import { useForm } from "antd/lib/form/Form";
+import * as ipfsClient from "ipfs-http-client";
+import { useContext, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import CollectionContext from "../contexts/collection-context";
-
-const ipfs = ipfsClient.create({
-  host: "ipfs.infura.io",
-  port: 5001,
-  protocol: "https",
-});
+import { NFT_SYMBOL, ZOO_NFT_MARKET_PROGRAM_ID } from "../data/Constants";
+import ZooNftMarketIdl from "../idl/zoo_nft_market_solana.json";
+import * as Market from "../util/Market";
+import * as Mint from "../util/Mint";
 
 const Minter = () => {
   let navigate = useNavigate();
   const { connection } = useConnection();
   const wallet = useWallet();
+  const [program, setProgram] = useState(null);
   const collectionCtx = useContext(CollectionContext);
 
   const [form] = useForm();
@@ -61,6 +41,19 @@ const Minter = () => {
   const [uploading, setUploading] = useState(false);
   const [minting, setMinting] = useState(false);
   const [mintSuccess, setMintSuccess] = useState(false);
+
+  useEffect(() => {
+    const provider = new anchor.AnchorProvider(connection, wallet);
+    anchor.setProvider(provider);
+
+    const program = new Program(
+      ZooNftMarketIdl,
+      ZOO_NFT_MARKET_PROGRAM_ID,
+      provider
+    );
+
+    setProgram(program);
+  }, [connection, wallet]);
 
   const onFileSelected = (file) => {
     const reader = new window.FileReader();
@@ -72,9 +65,6 @@ const Minter = () => {
   };
 
   const onCreate = async (values) => {
-    console.log("Connection: ", connection);
-    console.log("Wallet: ", wallet);
-
     let {
       name,
       description,
@@ -87,11 +77,14 @@ const Minter = () => {
       auction_period,
     } = values;
 
-    let uploadedImageUrl = await uploadImageToIpfs();
-    if (uploadImageToIpfs == null) return;
+    setUploading(true);
+    let uploadedImageUrl = await Mint.uploadImageToIpfs(imageFileBuffer);
+    setUploading(false);
+    if (uploadedImageUrl == null) return;
     console.log("Uploaded image url: ", uploadedImageUrl);
 
-    let uploadedMetatdataUrl = await uploadMetadataToIpfs(
+    setUploading(true);
+    let uploadedMetatdataUrl = await Mint.uploadMetadataToIpfs(
       name,
       NFT_SYMBOL,
       description,
@@ -100,179 +93,58 @@ const Minter = () => {
       trait_live_in,
       trait_food
     );
+    setUploading(false);
     if (uploadedMetatdataUrl == null) return;
     console.log("Uploaded meta data url: ", uploadedMetatdataUrl);
 
     setMinting(true);
-    const result = await mint(name, NFT_SYMBOL, uploadedMetatdataUrl);
-    setMinting(false);
-    setMintSuccess(result);
-  };
-
-  const uploadImageToIpfs = async () => {
-    setUploading(true);
-    const uploadedImage = await ipfs.add(imageFileBuffer);
-    setUploading(false);
-
-    if (!uploadedImage) {
-      notification["error"]({
-        message: "Error",
-        description: "Something went wrong when updloading the file",
-      });
-      return null;
-    }
-
-    return `https://ipfs.infura.io/ipfs/${uploadedImage.path}`;
-  };
-
-  const uploadMetadataToIpfs = async (
-    name,
-    symbol,
-    description,
-    uploadedImage,
-    traitSize,
-    traitLiveIn,
-    traitFood
-  ) => {
-    const metadata = {
+    const result = await Mint.mint(
+      program,
       name,
-      symbol,
-      description,
-      image: uploadedImage,
-      attributes: [
-        {
-          trait_type: "size",
-          value: traitSize,
-        },
-        {
-          trait_type: "live in",
-          value: traitLiveIn,
-        },
-        {
-          trait_type: "food",
-          value: traitFood,
-        },
-      ],
-    };
+      NFT_SYMBOL,
+      uploadedMetatdataUrl
+    );
+    setMinting(false);
 
-    setUploading(true);
-    const uploadedMetadata = await ipfs.add(JSON.stringify(metadata));
-    setUploading(false);
+    if (result != null) {
+      collectionCtx.loadItemMetadata(connection, result.metadataAddress, true);
 
-    if (uploadedMetadata == null) {
-      return null;
+      if (sale_type == "fixed_price_sale") {
+        await createSale(
+          program,
+          result.mintKey,
+          wallet,
+          result.associatedTokenAddress,
+          price
+        );
+      }
+      setMintSuccess(true);
     } else {
-      return `https://ipfs.infura.io/ipfs/${uploadedMetadata.path}`;
+      setMintSuccess(false);
     }
   };
 
-  const mint = async (name, symbol, metadataUrl) => {
-    const provider = new anchor.AnchorProvider(connection, wallet);
-    anchor.setProvider(provider);
-
-    const program = new Program(
-      ZooNftMarketIdl,
-      ZOO_NFT_MARKET_PROGRAM_ID,
-      provider
+  const createSale = async (
+    program,
+    mintKey,
+    wallet,
+    associatedTokenAddress,
+    price
+  ) => {
+    const order = await Market.createOrder(
+      program,
+      mintKey,
+      wallet.publicKey,
+      associatedTokenAddress,
+      "An order",
+      price
     );
-    console.log("Program Id: ", program.programId.toBase58());
-    console.log("Mint Size: ", MINT_SIZE);
-    const lamports =
-      await program.provider.connection.getMinimumBalanceForRentExemption(
-        MINT_SIZE
-      );
-    console.log("Mint Account Lamports: ", lamports);
 
-    const getMetadata = async (mint) => {
-      return (
-        await anchor.web3.PublicKey.findProgramAddress(
-          [
-            Buffer.from("metadata"),
-            TOKEN_METADATA_PROGRAM_ID.toBuffer(),
-            mint.toBuffer(),
-          ],
-          TOKEN_METADATA_PROGRAM_ID
-        )
-      )[0];
-    };
-
-    const mintKey = anchor.web3.Keypair.generate();
-
-    const nftTokenAccount = await getAssociatedTokenAddress(
-      mintKey.publicKey,
-      provider.wallet.publicKey
-    );
-    console.log("NFT Account: ", nftTokenAccount.toBase58());
-
-    const mint_tx = new anchor.web3.Transaction().add(
-      anchor.web3.SystemProgram.createAccount({
-        fromPubkey: provider.wallet.publicKey,
-        newAccountPubkey: mintKey.publicKey,
-        space: MINT_SIZE,
-        programId: TOKEN_PROGRAM_ID,
-        lamports,
-      }),
-      createInitializeMintInstruction(
-        mintKey.publicKey,
-        0,
-        provider.wallet.publicKey,
-        provider.wallet.publicKey
-      ),
-      createAssociatedTokenAccountInstruction(
-        provider.wallet.publicKey,
-        nftTokenAccount,
-        provider.wallet.publicKey,
-        mintKey.publicKey
-      )
-    );
-    let blockhashObj = await connection.getLatestBlockhash();
-    console.log("blockhashObj", blockhashObj);
-    mint_tx.recentBlockhash = blockhashObj.blockhash;
-
-    try {
-      const signature = await wallet.sendTransaction(mint_tx, connection, {
-        signers: [mintKey],
+    if (order != null) {
+      notification["success"]({
+        message: "Success",
+        description: "Created a sale of this item!",
       });
-      await connection.confirmTransaction(signature, "confirmed");
-    } catch {
-      return false;
-    }
-
-    console.log("Mint key: ", mintKey.publicKey.toString());
-    console.log("User: ", provider.wallet.publicKey.toString());
-
-    const metadataAddress = await getMetadata(mintKey.publicKey);
-    console.log("Metadata address: ", metadataAddress.toBase58());
-
-    try {
-      const tx = program.transaction.mintNft(
-        mintKey.publicKey,
-        name,
-        symbol,
-        metadataUrl,
-        {
-          accounts: {
-            mintAuthority: provider.wallet.publicKey,
-            mint: mintKey.publicKey,
-            tokenAccount: nftTokenAccount,
-            tokenProgram: TOKEN_PROGRAM_ID,
-            metadata: metadataAddress,
-            tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
-            payer: provider.wallet.publicKey,
-            systemProgram: anchor.web3.SystemProgram.programId,
-            rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-          },
-        }
-      );
-
-      const signature = await wallet.sendTransaction(tx, connection);
-      await connection.confirmTransaction(signature, "confirmed");
-      console.log("Mint Success!");
-
-      collectionCtx.loadItemMetadata(connection, metadataAddress, true);
-      return true;
-    } catch {
-      return false;
     }
   };
 
@@ -435,7 +307,11 @@ const Minter = () => {
                         </Radio.Button>
                       </Col>
                       <Col span={8}>
-                        <Radio.Button style={{ width: "100%" }} value="auction">
+                        <Radio.Button
+                          style={{ width: "100%" }}
+                          value="auction"
+                          disabled
+                        >
                           Auction
                         </Radio.Button>
                       </Col>
